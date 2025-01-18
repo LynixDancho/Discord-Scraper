@@ -1,0 +1,23 @@
+{
+    "name":"Discord Name Bio Scraper",
+    "version": "0.1.0",
+    "description": "Scraping Discord Names bios",
+    "manifest_version": 3,
+    "permissions": ["storage","tabs","scripting", "activeTab"],
+    "host_permissions": ["https://discord.com/*"],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+        "matches": ["https://discord.com/*"],
+        "js": ["content.js"]
+        }
+    ],
+    "action": {
+      
+    }
+
+
+
+}
