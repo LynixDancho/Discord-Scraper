@@ -17,7 +17,6 @@ async function YomamaAMscrapingDiscord(url) {
   const page = await browser.newPage();
   await page.goto("https://discord.com/login", { waitUntil: "networkidle2" });
 
-  // Login process
   await page.type('input[name="email"]', email, {
     delay: 50,
   });
@@ -26,69 +25,76 @@ async function YomamaAMscrapingDiscord(url) {
   await page.waitForNavigation({ waitUntil: "networkidle2" });
   console.log("Logged in!");
 
-  // Go to the specific Discord channel
   await page.goto(url, { waitUntil: "networkidle2" });
   console.log("Navigated to the server channel!");
 
-  // Locate and click the "Show Member List" button
   try {
-    // Wait for the parent container to load
-    await page.waitForSelector(".toolbar_fc4f04", { timeout: 10000 });
-
-    // Select all elements with the desired classes within the parent container
-    const elements = await page.$$(
-      ".toolbar_fc4f04 .iconWrapper_fc4f04.clickable_fc4f04"
-    );
-
-    if (elements.length > 0) {
-      // Access the last (far-right) element
-      const specificElement = elements[3];
-
-      // Click the specific element
-      await specificElement.click();
-      console.log("Clicked on the far-right element!");
-    } else {
-      console.log("No elements found with the given class!");
-    }
+    await page.waitForSelector('[aria-label="Show Member List"]', {
+      timeout: 10000,
+    });
+    await page.click('[aria-label="Show Member List"]');
+    console.log("Clicked on the 'Show Member List' button!");
   } catch (error) {
-    console.error("Failed to find or click 'Show Friends' button:", error);
+    console.error("Failed to find or click 'Show Member List' button:", error);
   }
+  await page.waitForSelector('[aria-label="Members"]');
+  const memberListContainer = await page.$('[aria-label="Members"]');
 
-  // Wait for the user profiles to load
-  await page.waitForSelector(".memberInner_a31c43");
-  const profiles = await page.$$(".memberInner_a31c43");
+  await page.waitForSelector('[class^="memberInner_"]');
+  const profiles = await page.$$('[class^="memberInner_"]');
   console.log(`Found ${profiles.length} profiles`);
 
-  // Iterate over each profile and click
   for (let i = 0; i < profiles.length; i++) {
-    await profiles[i].click();
-
-    // Wait for the username to appear
-    await page.waitForSelector(".userTagUsername_c32acf");
-    const usernameElement = await page.$(".userTagUsername_c32acf");
-    const username = await usernameElement.evaluate((el) =>
-      el.textContent.trim()
-    );
-    let bio = null;
     try {
-      await page.waitForSelector(".descriptionClamp_abaf7d", { timeout: 300 });
-      const bioElement = await page.waitForSelector(
-        ".descriptionClamp_abaf7d",
-        { timeout: 300 }
+      await profiles[i].click();
+
+      const usernameElement = await page.waitForSelector(
+        '[class^="userTagUsername_"]',
+        { timeout: 2000 }
       );
-      bio = await bioElement.evaluate((el) => el.textContent.trim());
+      const username = await usernameElement.evaluate((el) =>
+        el.textContent.trim()
+      );
+
+      let bio = "No bio available";
+      try {
+        const bioElement = await page.waitForSelector(
+          '[class^="descriptionClamp_"]',
+          { timeout: 1000 }
+        );
+        bio = await bioElement.evaluate((el) => el.textContent.trim());
+      } catch (error) {
+        console.log("No bio available");
+      }
+
+      console.log("Username:", username);
+      console.log("Bio:", bio);
     } catch (error) {
-      console.log("No bio available");
+      console.log(
+        `Failed to fetch profile info for profile #${i + 1}:`,
+        error.message
+      );
     }
 
-    console.log("Username:", username);
+    if ((i + 1) % 25 === 0) {
+      console.log("Scrolling to load more profiles...");
+      const selector = ".members_c8ffbb.thin__99f8c.scrollerBase__99f8c";
 
-    console.log("Bio:", bio || "No bio available");
+      await page.waitForSelector(selector);
+
+      await page.evaluate((selector) => {
+        const element = document.querySelector(selector);
+        if (element) {
+          element.scrollBy(0, 500);
+        }
+      }, selector);
+
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
   }
 
   await browser.close();
 }
-
 // Example channel URL
 YomamaAMscrapingDiscord(
   "https://discord.com/channels/763450757512560665/763450757512560668"
